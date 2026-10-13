@@ -75,18 +75,6 @@ jobs:
           ./emsdk install ccache-git-emscripten-64bit  
           source ./emsdk_env.sh  
 
-          #Custom emscripten
-          cd ~
-          git clone https://github.com/AndrewL97/emscripten.git
-          cd emscripten
-          export EM_CONFIG="$HOME/emsdk/.emscripten"
-          export PATH="$HOME/emscripten:$PATH"
-          #did work?
-          echo "emcc path: $(command -v emcc)"
-          test "$(command -v emcc)" = "$HOME/emscripten/emcc"
-          emcc --version
-          emcc -v
-
   
       # Save/restore ccache's cache box between runs. This is what makes the  
       # SECOND and later builds fast (first build is still full-length).  
@@ -98,6 +86,23 @@ jobs:
           restore-keys: |  
             ccache-${{ steps.get_tag.outputs.tag }}-  
             ccache-  
+            
+      - name: Install Custom emscripten
+        run: |  
+          cd ~  
+          #Custom emscripten
+          cd ~
+          git clone https://github.com/AndrewL97/emscripten.git
+          cd emscripten
+          export EM_CONFIG="$HOME/emsdk/.emscripten"
+          export PATH="$HOME/emscripten:$PATH"
+          ./bootstrap.py
+          #did work?
+          echo "emcc path: $(command -v emcc)"
+          test "$(command -v emcc)" = "$HOME/emscripten/emcc"
+          emcc --version
+          emcc -v
+
   
       - name: Cache build artifacts  
         uses: actions/cache@v4  
