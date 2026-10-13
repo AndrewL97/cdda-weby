@@ -79,10 +79,13 @@ jobs:
           cd ~
           git clone https://github.com/AndrewL97/emscripten.git
           cd emscripten
-          export EM_CONFIG="~/emsdk/.emscripten"
-          # Fail early (before the long compile) if the toolchain is broken.  
-          emcc --version  
-          which emcc
+          export EM_CONFIG="$HOME/emsdk/.emscripten"
+          export PATH="$HOME/emscripten:$PATH"
+          #did work?
+          echo "emcc path: $(command -v emcc)"
+          test "$(command -v emcc)" = "$HOME/emscripten/emcc"
+          emcc --version
+          emcc -v
 
   
       # Save/restore ccache's cache box between runs. This is what makes the  
