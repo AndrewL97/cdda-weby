@@ -65,17 +65,25 @@ jobs:
           # partially-installed toolchain is what caused the recurring  
           # "emcc ... os.execv FileNotFoundError" on the freetype/imgui ports.  
           rm -rf emsdk  
-          git clone https://github.com/AndrewL97/emscripten.git
+          git clone https://github.com/emscripten-core/emsdk.git
           cd emsdk  
-          ./emsdk install ${{ env.EMSCRIPTEN_VERSION }}  
-          ./emsdk activate ${{ env.EMSCRIPTEN_VERSION }}  
+          ./emsdk install latest
+          ./emsdk activate latest
           # CDDA's build turns on Emscripten's built-in ccache tool when  
           # CCACHE=1. That tool must be installed here or the build dies at  
           # "emsdk activate ccache-git-emscripten-64bit".  
           ./emsdk install ccache-git-emscripten-64bit  
           source ./emsdk_env.sh  
+
+          #Custom emscripten
+          cd ~
+          git clone https://github.com/AndrewL97/emscripten.git
+          cd emscripten
+          export EM_CONFIG="~/emsdk/.emscripten"
           # Fail early (before the long compile) if the toolchain is broken.  
           emcc --version  
+          which emcc
+
   
       # Save/restore ccache's cache box between runs. This is what makes the  
       # SECOND and later builds fast (first build is still full-length).  
