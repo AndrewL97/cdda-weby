@@ -65,7 +65,7 @@ jobs:
           # partially-installed toolchain is what caused the recurring  
           # "emcc ... os.execv FileNotFoundError" on the freetype/imgui ports.  
           rm -rf emsdk  
-          git clone clone https://github.com/AndrewL97/emscripten.git
+          git clone https://github.com/AndrewL97/emscripten.git
           cd emsdk  
           ./emsdk install ${{ env.EMSCRIPTEN_VERSION }}  
           ./emsdk activate ${{ env.EMSCRIPTEN_VERSION }}  
