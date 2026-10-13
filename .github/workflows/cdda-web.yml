@@ -97,12 +97,15 @@ jobs:
           export EM_CONFIG="$HOME/emsdk/.emscripten"
           export PATH="$HOME/emscripten:$PATH"
           ./bootstrap.py
-          #did work?
-          echo "emcc path: $(command -v emcc)"
-          test "$(command -v emcc)" = "$HOME/emscripten/emcc"
+            
+          # Make custom emscripten's emcc take precedence in later steps
+          echo "$HOME/emscripten" >> "$GITHUB_PATH"
+          echo "EM_CONFIG=$HOME/emsdk/.emscripten" >> "$GITHUB_ENV"
+          
+      - name: Verify custom emcc
+        run: |
+          which emcc
           emcc --version
-          emcc -v
-
   
       - name: Cache build artifacts  
         uses: actions/cache@v4  
