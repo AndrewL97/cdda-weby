@@ -22,8 +22,8 @@ export CFLAGS="$CFLAGS $EM_PORT_FLAGS"
 export CXXFLAGS="$CXXFLAGS $EM_PORT_FLAGS"
 export LDFLAGS="$LDFLAGS $EM_PORT_FLAGS"
 
-# Silence the unused-function warning
-export CXXFLAGS="$CXXFLAGS -Wno-unused-function -Wno-error=unused-function"
+# Silence specific unused warnings that are treated as errors under Emscripten/clang
+export CXXFLAGS="$CXXFLAGS -Wno-unused-function -Wno-error=unused-function -Wno-unused-but-set-global -Wno-error=unused-but-set-global"
 
 # Diagnostic: print which emcc we'll use
 echo "Which emcc is on PATH: $(which emcc || echo 'emcc not found')"
