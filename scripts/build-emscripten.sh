@@ -25,9 +25,17 @@ export LDFLAGS="$LDFLAGS $EM_PORT_FLAGS"
 # Silence specific unused warnings that are treated as errors under Emscripten/clang
 export CXXFLAGS="$CXXFLAGS -Wno-unused-function -Wno-error=unused-function -Wno-unused-but-set-global -Wno-error=unused-but-set-global"
 
-# Diagnostic: print which emcc we'll use
+# Diagnostic: print which emcc/em++ we'll use
 echo "Which emcc is on PATH: $(which emcc || echo 'emcc not found')"
+echo "Which em++ is on PATH: $(which em++ || echo 'em++ not found')"
 emcc --version || true
+em++ --version || true
 
+# ENSURE linking uses em++ so the C++ runtime is linked in.
+# Set environment vars and also add the DEFAULT_TO_CXX flag as a fallback.
+export CC=${CC:-emcc}
+export CXX=${CXX:-em++}
+export LDFLAGS="$LDFLAGS -sDEFAULT_TO_CXX"
 
-make -j`nproc` NATIVE=emscripten BACKTRACE=0 TILES=1 TESTS=0 RUNTESTS=0 RELEASE=1 CCACHE="$CCACHE" LINTJSON=0 cataclysm-tiles.js
+# Build (explicitly pass CC/CXX to make as well)
+make -j`nproc` NATIVE=emscripten BACKTRACE=0 TILES=1 TESTS=0 RUNTESTS=0 RELEASE=1 CCACHE="$CCACHE" CC="$CC" CXX="$CXX" LINTJSON=0 cataclysm-tiles.js
