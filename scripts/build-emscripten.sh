@@ -4,20 +4,16 @@ set -exo pipefail
 
 CCACHE=${CCACHE:-0}
 
-# Ensure EM_CONFIG points to the workflow-installed config unless overridden
-export EM_CONFIG="${EM_CONFIG:-$HOME/emsdk/.emscripten}"
-echo "EM_CONFIG=$EM_CONFIG"
-
-# Diagnostic: print which emcc we'll use
-echo "Which emcc is on PATH: $(which emcc || echo 'emcc not found')"
-emcc --version || true
-
 emsdk install latest
 emsdk activate latest
 if [ "$CCACHE" == "1" ]
 then
     emsdk activate ccache-git-emscripten-64bit
 fi
+
+# Ensure EM_CONFIG points to the workflow-installed config unless overridden
+export EM_CONFIG="${EM_CONFIG:-$HOME/emsdk/.emscripten}"
+echo "EM_CONFIG=$EM_CONFIG"
 
 # Diagnostic: print which emcc we'll use
 echo "Which emcc is on PATH: $(which emcc || echo 'emcc not found')"
