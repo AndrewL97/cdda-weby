@@ -12,8 +12,9 @@ then
 fi
 
 # Ensure EM_CONFIG points to the workflow-installed config unless overridden
-export EM_CONFIG="${EM_CONFIG:-$HOME/emsdk/.emscripten}"
-echo "EM_CONFIG=$EM_CONFIG"
+       
+export EM_CONFIG="$HOME/emsdk/.emscripten"
+echo "EMCONFIG IS $EM_CONFIG"
 
 # Diagnostic: print which emcc we'll use
 echo "Which emcc is on PATH: $(which emcc || echo 'emcc not found')"
