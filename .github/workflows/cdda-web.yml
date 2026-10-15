@@ -131,6 +131,11 @@ jobs:
           source ~/emsdk/emsdk_env.sh
           # Ensure the custom emscripten clone takes precedence
           export PATH="$HOME/emscriptenCustom:$PATH"
+          
+          export EM_CONFIG="$HOME/emsdk/.emscripten"
+          echo "EMCONFIG IS $EM_CONFIG"
+
+          
           # Verify the emcc we will use
           echo "Using emcc from: $(which emcc)"
           emcc --version
