@@ -1,41 +1,31 @@
+#!/usr/bin/env bash
+set -eo pipefail
 
-#!/bin/bash
-set -exo pipefail
+# Build wrapper for CDDA -> Emscripten. Assumes emsdk has already been installed
+# and activated in CI (see workflow step). This script only ensures ccache
+# activation (if requested) and runs the make target.
+#
+# Usage: CCACHE=1 ./scripts/build-emscripten.sh
 
 CCACHE=${CCACHE:-0}
 
-emsdk install latest
-emsdk activate latest
-if [ "$CCACHE" == "1" ]
-then
-    emsdk activate ccache-git-emscripten-64bit
+# If emsdk is available, prefer the repo-local emsdk binary; otherwise try PATH.
+if command -v emsdk >/dev/null 2>&1; then
+  EMSDK_CMD="$(command -v emsdk)"
+elif [ -x "$HOME/emsdk/emsdk" ]; then
+  EMSDK_CMD="$HOME/emsdk/emsdk"
+else
+  EMSDK_CMD=""
 fi
 
-# Ensure EM_CONFIG points to the workflow-installed config unless overridden
-       
-export EM_CONFIG="$HOME/emsdk/.emscripten"
-echo "EMCONFIG IS $EM_CONFIG"
+if [ "$CCACHE" = "1" ]; then
+  if [ -n "$EMSDK_CMD" ]; then
+    # Activate emsdk-provided ccache helper (no-op if already active)
+    "$EMSDK_CMD" activate ccache-git-emscripten-64bit || true
+  else
+    echo "Warning: emsdk command not found; cannot activate ccache wrapper. Continuing..."
+  fi
+fi
 
-# Force Emscripten to use SDL3 and related ports from the ports system
-EM_PORT_FLAGS="-sUSE_SDL=3 -sUSE_SDL_IMAGE=3 -sUSE_SDL_MIXER=3"
-export CFLAGS="$CFLAGS $EM_PORT_FLAGS"
-export CXXFLAGS="$CXXFLAGS $EM_PORT_FLAGS"
-export LDFLAGS="$LDFLAGS $EM_PORT_FLAGS"
-
-# Silence specific unused warnings that are treated as errors under Emscripten/clang
-export CXXFLAGS="$CXXFLAGS -Wno-unused-function -Wno-error=unused-function -Wno-unused-but-set-global -Wno-error=unused-but-set-global"
-
-# Diagnostic: print which emcc/em++ we'll use
-echo "Which emcc is on PATH: $(which emcc || echo 'emcc not found')"
-echo "Which em++ is on PATH: $(which em++ || echo 'em++ not found')"
-emcc --version || true
-em++ --version || true
-
-# ENSURE linking uses em++ so the C++ runtime is linked in.
-# Set environment vars and also add the DEFAULT_TO_CXX flag as a fallback.
-export CC=${CC:-emcc}
-export CXX=${CXX:-em++}
-export LDFLAGS="$LDFLAGS -sDEFAULT_TO_CXX"
-
-# Build (explicitly pass CC/CXX to make as well)
-make -j`nproc` NATIVE=emscripten BACKTRACE=0 TILES=1 TESTS=0 RUNTESTS=0 RELEASE=1 CCACHE="$CCACHE" CC="$CC" CXX="$CXX" LINTJSON=0 cataclysm-tiles.js
+# Run the build. Let make decide parallelism.
+make -j"$(nproc)" NATIVE=emscripten BACKTRACE=0 TILES=1 TESTS=0 RUNTESTS=0 RELEASE=1 CCACHE="$CCACHE" LINTJSON=0 cataclysm-tiles.js
