@@ -17,7 +17,7 @@ permissions:
   contents: write  
   
 env:  
-  EMSCRIPTEN_VERSION: '3.1.51'  
+  EMSCRIPTEN_VERSION: '6.0.12'  
   CDDA_REPO: 'CleverRaven/cataclysm-dda'  
   BUILD_TYPE: 'Release'  
   BUILD_TILES: 'true'  
@@ -58,54 +58,61 @@ jobs:
           sudo apt-get install -y ccache  
           ccache --version  
   
-      - name: Install Emscripten (clean)  
-        run: |  
-          cd ~  
-          # Always start from a completely fresh emsdk. A half-restored or  
-          # partially-installed toolchain is what caused the recurring  
-          # "emcc ... os.execv FileNotFoundError" on the freetype/imgui ports.  
-          rm -rf emsdk  
+      - name: Install Emscripten (custom fork)
+        run: |
+          cd $HOME
+          rm -rf emsdk
           git clone https://github.com/emscripten-core/emsdk.git
-          cd emsdk  
-          ./emsdk install latest
-          ./emsdk activate latest
-          # CDDA's build turns on Emscripten's built-in ccache tool when  
-          # CCACHE=1. That tool must be installed here or the build dies at  
-          # "emsdk activate ccache-git-emscripten-64bit".  
-          ./emsdk install ccache-git-emscripten-64bit  
-          source ./emsdk_env.sh  
+          cd emsdk
 
+          # Overwrite the upstream emscripten checkout with our fork so emsdk uses
+          # the ports in that fork (contains SDL3_Mixer & SDL3_Image).
+          rm -rf upstream/emscripten
+          git clone --depth 1 --branch main https://github.com/AndrewL97/emscripten.git upstream/emscripten
+
+          # Install and activate the requested SDK version (6.0.12)
+          ./emsdk install ${{ env.EMSCRIPTEN_VERSION }}
+          ./emsdk activate ${{ env.EMSCRIPTEN_VERSION }}
+
+          # Install ccache wrapper package used by the build
+          ./emsdk install ccache-git-emscripten-64bit
+
+          # Load emsdk env for verification
+          source ./emsdk_env.sh
+
+          echo "=== smoke checks: upstream/emscripten and ports ==="
+          echo "emscripten tree HEAD:"
+          if [ -f ./upstream/emscripten/.git/HEAD ]; then
+            sed -n '1,2p' ./upstream/emscripten/.git/HEAD || true
+          else
+            echo "(no .git/HEAD found; upstream may be a downloaded archive)"
+          fi
+          echo "Listing upstream/emscripten/ports (first 200 lines):"
+          ls -la ./upstream/emscripten/ports || true
+          # Look specifically for our ports
+          if ls ./upstream/emscripten/ports | grep -E 'SDL3_Mixer|SDL3_Image' >/dev/null 2>&1; then
+            echo "Found SDL3_Mixer / SDL3_Image in upstream/emscripten/ports"
+          else
+            echo "WARNING: SDL3_Mixer / SDL3_Image not found in upstream/emscripten/ports"
+            echo "This may mean emsdk installed a prebuilt SDK that ignores the local upstream copy."
+          fi
+
+          # Verify emcc works
+          emcc --version
   
       # Save/restore ccache's cache box between runs. This is what makes the  
-      # SECOND and later builds fast (first build is still full-length).  
-      - name: Cache ccache  
-        uses: actions/cache@v4  
-        with:  
-          path: ~/.ccache  
-          key: ccache-${{ steps.get_tag.outputs.tag }}-${{ env.EMSCRIPTEN_VERSION }}  
-          restore-keys: |  
-            ccache-${{ steps.get_tag.outputs.tag }}-  
-            ccache-  
-            
-      - name: Install Custom emscripten
-        run: |  
-          cd ~  
-          #Custom emscripten
-          cd ~
-          git clone https://github.com/AndrewL97/emscripten.git emscriptenCustom
-          cd emscriptenCustom
-          export EM_CONFIG="$HOME/emsdk/.emscripten"
-          export PATH="$HOME/emscripten:$PATH"
-          ./bootstrap.py
-            
-          # Make custom emscripten's emcc take precedence in later steps
-          echo "$HOME/emscriptenCustom" >> "$GITHUB_PATH"
-          echo "EM_CONFIG=$HOME/emsdk/.emscripten" >> "$GITHUB_ENV"
-          
-      - name: Verify custom emcc
-        run: |
-          which emcc
-          emcc --version
+      # SECOND and later builds fast (first build is still full-length). 
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ github.ref_name }}-${{ env.EMSCRIPTEN_VERSION }}-${{ runner.os }}-${{ hashFiles('**/scripts/**') }}
+          restore-keys: |
+            ccache-${{ github.ref_name }}-${{ env.EMSCRIPTEN_VERSION }}-
+            ccache-${{ github.ref_name }}-
+            ccache-
+ 
+
   
       - name: Cache build artifacts  
         uses: actions/cache@v4  
@@ -128,21 +135,18 @@ jobs:
           CCACHE_DIR: /home/runner/.ccache  
           CCACHE_MAXSIZE: 5G  
         run: |  
-          source ~/emsdk/emsdk_env.sh
-          # Ensure the custom emscripten clone takes precedence
-          export PATH="$HOME/emscriptenCustom:$PATH"
-          
-          export EM_CONFIG="$HOME/emsdk/.emscripten"
-          echo "EMCONFIG IS $EM_CONFIG"
-
-          
-          # Verify the emcc we will use
-          echo "Using emcc from: $(which emcc)"
-          emcc --version
-          # Show stats before so we can compare after the build.
+          # Ensure emsdk env is active in this step (safety)
+          if [ -f $HOME/emsdk/emsdk_env.sh ]; then
+            source $HOME/emsdk/emsdk_env.sh
+          fi
+          # show ccache stats pre-build
           ccache --zero-stats || true
+
           chmod +x scripts/build_web.sh
           ./scripts/build_web.sh
+
+          echo "ccache stats after build:"
+          ccache --show-stats || true
   
       - name: Package web build  
         run: |  
